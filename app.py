@@ -344,6 +344,19 @@ elif st.session_state.page == "admin":
             st.session_state.page = "reveal"
             st.rerun()
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("#### 🗑️ 투표 초기화 (테스트용)")
+    confirm = st.checkbox("모든 투표 데이터를 삭제하고 투표를 다시 시작합니다")
+    if confirm:
+        if st.button("초기화 실행", use_container_width=True):
+            get_sb().table("votes").delete().neq("id", 0).execute()
+            set_voting(True)
+            st.session_state.results_snapshot = None
+            st.session_state.reveal_count = 0
+            st.success("✅ 초기화 완료! 투표가 다시 시작됩니다.")
+            st.rerun()
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # 개표 화면

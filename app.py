@@ -364,41 +364,71 @@ elif st.session_state.page == "admin":
 elif st.session_state.page == "reveal":
     from itertools import groupby as _groupby
 
-    results = st.session_state.results_snapshot   # [(name, votes), ...] 오름차순
+    results = st.session_state.results_snapshot
+    results = [(n, v) for n, v in results if v > 0]   # 0표 제외
+
     reveal_count = st.session_state.reveal_count
     total_votes = sum(v for _, v in results)
     max_votes = max((v for _, v in results), default=1) or 1
 
-    # 득표수별로 그룹핑 (오름차순 → 꼴찌 그룹 먼저)
+    # 득표수별 그룹핑 (오름차순)
     groups = []
     for _, grp in _groupby(results, key=lambda x: x[1]):
         groups.append(list(grp))
     total_groups = len(groups)
 
-    # 화면 표시는 내림차순 (1위 그룹이 위)
+    # 내림차순 (1위 그룹이 위)
     display_groups = list(reversed(groups))
 
-    st.markdown('<p class="page-title">🏆 개표 결과</p>', unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    # 공개된 인원 수
+    revealed_names = [
+        name
+        for i, group in enumerate(display_groups)
+        if reveal_count >= (total_groups - i)
+        for name, _ in group
+    ]
 
+    st.markdown('<p class="page-title">🏆 개표 결과</p>', unsafe_allow_html=True)
+
+    # ── 버튼 + 진행 상태 (항상 상단에 고정) ──
+    remaining_groups = total_groups - reveal_count
+    total_named = sum(len(g) for g in groups)
+    st.markdown(
+        f'<p class="page-sub">공개 {len(revealed_names)}명 &nbsp;·&nbsp; 미공개 {total_named - len(revealed_names)}명</p>',
+        unsafe_allow_html=True
+    )
+
+    _, btn_col, _ = st.columns([1, 2, 1])
+    with btn_col:
+        if reveal_count < total_groups:
+            is_last = (reveal_count == total_groups - 1)
+            btn_label = "🏆  MVP 공개!" if is_last else f"다음 공개  ▶  ({remaining_groups}단계 남음)"
+            if st.button(btn_label, use_container_width=True, type="primary"):
+                st.session_state.reveal_count += 1
+                st.rerun()
+        else:
+            st.markdown("""
+            <div style="text-align:center;font-size:2.2rem;font-weight:900;
+                        color:#f59e0b;padding:0.5rem;letter-spacing:2px;">
+                🎉 축하합니다! 🎉
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ── 공개된 결과만 표시 ──
     rank = 1
     for i, group in enumerate(display_groups):
-        # 이 그룹이 공개될 조건: reveal_count >= (total_groups - i)
         is_revealed = reveal_count >= (total_groups - i)
         is_mvp = (i == 0)
         votes = group[0][1]
 
+        if not is_revealed:
+            rank += len(group)
+            continue
+
         for name, _ in group:
-            if not is_revealed:
-                st.markdown(f"""
-                <div class="result-row result-hidden">
-                    <div class="r-rank" style="color:#334155">?</div>
-                    <div class="r-name" style="color:#334155">? ? ?</div>
-                    <div class="r-bar-wrap"></div>
-                    <div class="r-votes" style="color:#334155">- 표</div>
-                </div>
-                """, unsafe_allow_html=True)
-            elif is_mvp:
+            if is_mvp:
                 pct = round(votes / total_votes * 100) if total_votes else 0
                 bar = int(votes / max_votes * 100)
                 st.markdown(f"""
@@ -425,28 +455,9 @@ elif st.session_state.page == "reveal":
                 </div>
                 """, unsafe_allow_html=True)
 
-        if is_revealed:
-            rank += len(group)
+        rank += len(group)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    _, col, _ = st.columns([1, 2, 1])
-    with col:
-        if reveal_count < total_groups:
-            is_last = (reveal_count == total_groups - 1)
-            remaining = total_groups - reveal_count
-            btn_label = "🏆  MVP 공개!" if is_last else f"다음 공개  ▶  ({remaining}단계 남음)"
-            if st.button(btn_label, use_container_width=True, type="primary"):
-                st.session_state.reveal_count += 1
-                st.rerun()
-        else:
-            st.markdown("""
-            <div style="text-align:center;font-size:2.2rem;font-weight:900;
-                        color:#f59e0b;padding:1rem;letter-spacing:2px;">
-                🎉 축하합니다! 🎉
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("← 관리자 화면", use_container_width=True):
-            st.session_state.page = "admin"
-            st.rerun()
+    if st.button("← 관리자 화면", use_container_width=True):
+        st.session_state.page = "admin"
+        st.rerun()

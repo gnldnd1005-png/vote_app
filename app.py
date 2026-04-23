@@ -362,69 +362,79 @@ elif st.session_state.page == "admin":
 # 개표 화면
 # ════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "reveal":
+    from itertools import groupby as _groupby
 
     results = st.session_state.results_snapshot   # [(name, votes), ...] 오름차순
     reveal_count = st.session_state.reveal_count
-    total_candidates = len(results)
     total_votes = sum(v for _, v in results)
     max_votes = max((v for _, v in results), default=1) or 1
 
-    # 화면에는 1위(MVP)가 위 → 꼴찌가 아래
-    display = list(reversed(results))   # 내림차순
+    # 득표수별로 그룹핑 (오름차순 → 꼴찌 그룹 먼저)
+    groups = []
+    for _, grp in _groupby(results, key=lambda x: x[1]):
+        groups.append(list(grp))
+    total_groups = len(groups)
+
+    # 화면 표시는 내림차순 (1위 그룹이 위)
+    display_groups = list(reversed(groups))
 
     st.markdown('<p class="page-title">🏆 개표 결과</p>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    for i, (name, votes) in enumerate(display):
-        rank = i + 1
-        # 꼴찌(아래)부터 공개: display[i]는 reveal_count >= (total - i) 일 때 공개
-        is_revealed = reveal_count >= (total_candidates - i)
-        is_mvp = (rank == 1)
+    rank = 1
+    for i, group in enumerate(display_groups):
+        # 이 그룹이 공개될 조건: reveal_count >= (total_groups - i)
+        is_revealed = reveal_count >= (total_groups - i)
+        is_mvp = (i == 0)
+        votes = group[0][1]
 
-        if not is_revealed:
-            st.markdown(f"""
-            <div class="result-row result-hidden">
-                <div class="r-rank" style="color:#334155">#{rank}</div>
-                <div class="r-name" style="color:#334155">? ? ?</div>
-                <div class="r-bar-wrap"></div>
-                <div class="r-votes" style="color:#334155">- 표</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        elif is_mvp:
-            pct = round(votes / total_votes * 100) if total_votes else 0
-            bar = int(votes / max_votes * 100)
-            st.markdown(f"""
-            <div class="result-row result-mvp">
-                <div class="r-rank" style="color:white">🏆</div>
-                <div class="r-name" style="color:white">{name}</div>
-                <div class="r-bar-wrap">
-                    <div class="r-bar r-bar-mvp" style="width:{bar}%"></div>
+        for name, _ in group:
+            if not is_revealed:
+                st.markdown(f"""
+                <div class="result-row result-hidden">
+                    <div class="r-rank" style="color:#334155">?</div>
+                    <div class="r-name" style="color:#334155">? ? ?</div>
+                    <div class="r-bar-wrap"></div>
+                    <div class="r-votes" style="color:#334155">- 표</div>
                 </div>
-                <div class="r-votes" style="color:white">{votes}표 ({pct}%)</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        else:
-            pct = round(votes / total_votes * 100) if total_votes else 0
-            bar = int(votes / max_votes * 100)
-            st.markdown(f"""
-            <div class="result-row result-normal">
-                <div class="r-rank" style="color:#94a3b8">#{rank}</div>
-                <div class="r-name" style="color:#1e293b">{name}</div>
-                <div class="r-bar-wrap">
-                    <div class="r-bar" style="width:{bar}%"></div>
+                """, unsafe_allow_html=True)
+            elif is_mvp:
+                pct = round(votes / total_votes * 100) if total_votes else 0
+                bar = int(votes / max_votes * 100)
+                st.markdown(f"""
+                <div class="result-row result-mvp">
+                    <div class="r-rank" style="color:white">🏆</div>
+                    <div class="r-name" style="color:white">{name}</div>
+                    <div class="r-bar-wrap">
+                        <div class="r-bar r-bar-mvp" style="width:{bar}%"></div>
+                    </div>
+                    <div class="r-votes" style="color:white">{votes}표 ({pct}%)</div>
                 </div>
-                <div class="r-votes" style="color:#475569">{votes}표 ({pct}%)</div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+            else:
+                pct = round(votes / total_votes * 100) if total_votes else 0
+                bar = int(votes / max_votes * 100)
+                st.markdown(f"""
+                <div class="result-row result-normal">
+                    <div class="r-rank" style="color:#94a3b8">#{rank}</div>
+                    <div class="r-name" style="color:#1e293b">{name}</div>
+                    <div class="r-bar-wrap">
+                        <div class="r-bar" style="width:{bar}%"></div>
+                    </div>
+                    <div class="r-votes" style="color:#475569">{votes}표 ({pct}%)</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        if is_revealed:
+            rank += len(group)
 
     st.markdown("<br>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 2, 1])
     with col:
-        if reveal_count < total_candidates:
-            is_last = (reveal_count == total_candidates - 1)
-            btn_label = "🏆  MVP 공개!" if is_last else f"다음 공개  ▶  ({total_candidates - reveal_count}명 남음)"
+        if reveal_count < total_groups:
+            is_last = (reveal_count == total_groups - 1)
+            remaining = total_groups - reveal_count
+            btn_label = "🏆  MVP 공개!" if is_last else f"다음 공개  ▶  ({remaining}단계 남음)"
             if st.button(btn_label, use_container_width=True, type="primary"):
                 st.session_state.reveal_count += 1
                 st.rerun()

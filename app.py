@@ -173,8 +173,8 @@ def set_voting(val: bool):
     get_sb().table("settings").upsert({"key": "voting_open", "value": str(val).lower()}).execute()
 
 
-def submit_vote(candidate: str):
-    get_sb().table("votes").insert({"candidate": candidate}).execute()
+def submit_vote(candidate: str, reason: str):
+    get_sb().table("votes").insert({"candidate": candidate, "reason": reason}).execute()
 
 
 def get_total_votes():
@@ -233,25 +233,25 @@ if st.session_state.page == "vote":
     elif not candidates:
         st.error("후보자 목록(candidates.xlsx)이 없습니다.")
 
-    # ── Step 1: 본인 이름 선택 ──
+    # ── Step 1: 본인 이름 입력 ──
     elif st.session_state.voter_name is None:
-        st.markdown('<p class="page-sub">먼저 본인 이름을 선택하세요</p>', unsafe_allow_html=True)
+        st.markdown('<p class="page-sub">먼저 본인 이름을 입력하세요</p>', unsafe_allow_html=True)
         _, col, _ = st.columns([1, 2, 1])
         with col:
-            name = st.selectbox("본인 이름", ["선택하세요"] + candidates, label_visibility="collapsed")
+            name = st.text_input("본인 이름", placeholder="이름을 입력하세요", label_visibility="collapsed")
             st.markdown("<br>", unsafe_allow_html=True)
             if st.button("다음 ▶", use_container_width=True, type="primary"):
-                if name == "선택하세요":
-                    st.warning("이름을 선택해주세요.")
+                if not name.strip():
+                    st.warning("이름을 입력해주세요.")
                 else:
-                    st.session_state.voter_name = name
+                    st.session_state.voter_name = name.strip()
                     st.session_state.selected = None
                     st.rerun()
 
-    # ── Step 2: 후보 선택 ──
+    # ── Step 2: 후보 선택 + 이유 입력 ──
     else:
         voter = st.session_state.voter_name
-        pool = [c for c in candidates if c != voter]
+        pool = [c for c in candidates if c.strip() != voter.strip()]
         st.markdown('<p class="page-sub">MVP로 추천하고 싶은 동료를 선택하세요</p>', unsafe_allow_html=True)
 
         cols = st.columns(3)
@@ -265,15 +265,27 @@ if st.session_state.page == "vote":
                     st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        _, col, _ = st.columns([1, 2, 1])
-        with col:
-            if st.session_state.selected:
+
+        if st.session_state.selected:
+            _, col, _ = st.columns([1, 2, 1])
+            with col:
+                reason = st.text_area(
+                    f"**{st.session_state.selected}**을(를) 추천하는 이유",
+                    placeholder="추천 이유를 작성해주세요 (필수)",
+                    height=120
+                )
+                st.markdown("<br>", unsafe_allow_html=True)
                 if st.button(f"🗳️  {st.session_state.selected}에게 투표하기",
                              use_container_width=True, type="primary"):
-                    submit_vote(st.session_state.selected)
-                    st.session_state.voted = True
-                    st.rerun()
-            else:
+                    if not reason.strip():
+                        st.warning("추천 이유를 작성해주세요.")
+                    else:
+                        submit_vote(st.session_state.selected, reason.strip())
+                        st.session_state.voted = True
+                        st.rerun()
+        else:
+            _, col, _ = st.columns([1, 2, 1])
+            with col:
                 st.button("후보자를 먼저 선택하세요", use_container_width=True, disabled=True)
 
     # ── 관리자 로그인 (숨김) ──

@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from collections import Counter
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://nccrixjcgfftzdjypham.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_RnHNeA40QQtIcbR6BUJjVw_m9HWJ-Rz")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
 CANDIDATES_FILE = "candidates.xlsx"
 

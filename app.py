@@ -5,7 +5,7 @@ from collections import Counter
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://nccrixjcgfftzdjypham.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_RnHNeA40QQtIcbR6BUJjVw_m9HWJ-Rz")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
+ADMIN_PASSWORD = "admin1234"
 CANDIDATES_FILE = "candidates.xlsx"
 
 st.set_page_config(page_title="MVP 투표", page_icon="🏆", layout="wide", initial_sidebar_state="collapsed")
